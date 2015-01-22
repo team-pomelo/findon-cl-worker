@@ -3,11 +3,12 @@ from scrapy.contrib.linkextractors.lxmlhtml import LxmlLinkExtractor
 from scrapy.selector import Selector
 from scrapy.http import Request
 
+from findoncl.helpers import absurl
 from findoncl.items import CLItem, CLAttr
 
 class CLAdSpider(CrawlSpider):
     name = "clad"
-    allowed_domains = ["washingtondc.craigslist.com"]
+    allowed_domains = ["washingtondc.craigslist.org"]
     start_urls = [
         "http://washingtondc.craigslist.org/search/cto/"
     ]
@@ -17,9 +18,12 @@ class CLAdSpider(CrawlSpider):
     # Override parse method from CrawlSpider, this isn't even a crawlspider anymore. thefuck.
     def parse(self, response):
         sel = Selector(response)
+        #domain =
         for l in sel.xpath('//div[@class="content"]//p[@class="row"]'):
-            yield Request('http://%s%s' % (self.allowed_domains[0], l.xpath('a[@class="i"]/@href')[0].extract()),
+            yield Request(absurl(self.allowed_domains[0], l.xpath('a[@class="i"]/@href')[0].extract()),
                           callback=self.parse_ad, meta={'pid': l.xpath('@data-pid')[0].extract()})
+        next_page = absurl(self.allowed_domains[0], sel.css('a.next.button').xpath('@href')[0].extract())
+        yield Request(next_page, callback=self.parse)
 
     def parse_ad(self, response):
         sel = Selector(response)
@@ -46,7 +50,7 @@ class CLAdSpider(CrawlSpider):
         attr_val = path.xpath('b/text()').extract()
         if not attr_key:
             attr_key = [""]
-        
+
         if not attr_val:
             if 'VIN' in attr_key[0]:
                 attr_key, attr_val = attr_key[0].split(':')

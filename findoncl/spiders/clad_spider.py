@@ -1,3 +1,6 @@
+
+import datetime
+
 from scrapy.contrib.spiders import CrawlSpider, Rule
 from scrapy.contrib.linkextractors.lxmlhtml import LxmlLinkExtractor
 from scrapy.selector import Selector
@@ -36,7 +39,6 @@ class CLAdSpider(CrawlSpider):
         item['title'] = sel.xpath('//h2[@class="postingtitle"]/text()').extract()[-1].encode('UTF-8').strip()
         item['link'] = response.url
         item['description'] = map(unicode.strip, sel.xpath('//section[@id="postingbody"]//text()').extract())
-        #item['attrs'] = [self.parse_attrs(a) for a in sel.xpath('//p[@class="attrgroup"]//span')]
         item['attrs'] = {}
         for a in sel.xpath('//p[@class="attrgroup"]//span'):
             try:
@@ -52,7 +54,10 @@ class CLAdSpider(CrawlSpider):
             else:
                 akey = '_'
             item['attrs'][akey] = aval
-        item['images'] = sel.xpath('//div[@id="thumbs"]//a/@href').extract()
+        item['images'] = sel.xpath('//div[@id="thumbs"]//a/@href').extract() or sel.xpath('//div[@class="tray"]//img/@src').extract()
+        item['posted'] = sel.xpath('//time/@datetime')[0].extract()
+        item['updated'] = sel.xpath('//time/@datetime')[-1].extract()
+        item['seen'] = datetime.datetime.utcnow()
         item.save()
 
     def parse_attrs(self, path):

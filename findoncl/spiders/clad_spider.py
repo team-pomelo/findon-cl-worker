@@ -1,4 +1,4 @@
-
+import re
 import datetime
 
 from scrapy.contrib.spiders import CrawlSpider, Rule
@@ -24,11 +24,14 @@ class CLAdSpider(CrawlSpider):
         #domain =
         for l in sel.xpath('//div[@class="content"]//p[@class="row"]'):
             ad_id = l.xpath('@data-pid')[0].extract()
+            ad_title = l.xpath('span[@class="txt"]/span[@class="pl"]/a/text()')[0].extract()
             if CLAd.exists(ad_id):
                 continue
 
-            yield Request(absurl(self.allowed_domains[0], l.xpath('a[@class="i"]/@href')[0].extract()),
-                          callback=self.parse_ad, meta={'pid': ad_id})
+            yield Request(absurl(self.allowed_domains[0],
+                                 l.xpath('a[@class="i"]/@href')[0].extract()),
+                          callback=self.parse_ad, meta={'pid': ad_id,
+                                                        'title': ad_title})
         next_page = absurl(self.allowed_domains[0], sel.css('a.next.button').xpath('@href')[0].extract())
         yield Request(next_page, callback=self.parse)
 
@@ -36,7 +39,7 @@ class CLAdSpider(CrawlSpider):
         sel = Selector(response)
         item = CLAd()
         item['id'] = response.meta['pid']
-        item['title'] = sel.xpath('//h2[@class="postingtitle"]/text()').extract()[-1].encode('UTF-8').strip()
+        item['title'] = response.meta['title']
         item['link'] = response.url
         item['description'] = map(unicode.strip, sel.xpath('//section[@id="postingbody"]//text()').extract())
         item['attrs'] = {}
@@ -58,6 +61,12 @@ class CLAdSpider(CrawlSpider):
         item['posted'] = sel.xpath('//time/@datetime')[0].extract()
         item['updated'] = sel.xpath('//time/@datetime')[-1].extract()
         item['seen'] = datetime.datetime.utcnow()
+        title_xtra = sel.xpath('//h2[@class="postingtitle"]/text()').extract()[-1].encode('UTF-8').replace(item['title'], '').replace('-', '').strip()
+        if title_xtra:
+            d = re.match(r'(\D)?(\d+)', title_xtra)
+            if d:
+                item['currency'] = d.group(1)
+                item['price'] = d.group(2)
         item.save()
 
     def parse_attrs(self, path):

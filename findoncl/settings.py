@@ -20,8 +20,7 @@ ITEM_PIPELINES = [
   'scrapyelasticsearch.scrapyelasticsearch.ElasticSearchPipeline',
 ]
 
-ELASTICSEARCH_SERVER = '10.0.3.98' 
-ELASTICSEARCH_PORT = 9200
 ELASTICSEARCH_INDEX = 'cl'
 ELASTICSEARCH_TYPE = 'cl_ad'
 ELASTICSEARCH_UNIQ_KEY = 'id'
+ES_SERVERS = ['10.0.3.98:9200']

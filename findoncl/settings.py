@@ -16,11 +16,4 @@ NEWSPIDER_MODULE = 'findoncl.spiders'
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 USER_AGENT = 'findoncl-dev (+http://findon.cl)'
 
-ITEM_PIPELINES = [
-  'scrapyelasticsearch.scrapyelasticsearch.ElasticSearchPipeline',
-]
-
-ELASTICSEARCH_INDEX = 'cl'
-ELASTICSEARCH_TYPE = 'cl_ad'
-ELASTICSEARCH_UNIQ_KEY = 'id'
 ES_SERVERS = ['10.0.3.98:9200']

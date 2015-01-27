@@ -4,7 +4,7 @@ from scrapy.selector import Selector
 from scrapy.http import Request
 
 from findoncl.helpers import absurl
-from findoncl.items import CLItem, CLAttr
+from findoncl.models import CLAd, CLAttr
 
 class CLAdSpider(CrawlSpider):
     name = "clad"
@@ -20,32 +20,42 @@ class CLAdSpider(CrawlSpider):
         sel = Selector(response)
         #domain =
         for l in sel.xpath('//div[@class="content"]//p[@class="row"]'):
+            ad_id = l.xpath('@data-pid')[0].extract()
+            if CLAd.exists(ad_id):
+                continue
+
             yield Request(absurl(self.allowed_domains[0], l.xpath('a[@class="i"]/@href')[0].extract()),
-                          callback=self.parse_ad, meta={'pid': l.xpath('@data-pid')[0].extract()})
+                          callback=self.parse_ad, meta={'pid': ad_id})
         next_page = absurl(self.allowed_domains[0], sel.css('a.next.button').xpath('@href')[0].extract())
         yield Request(next_page, callback=self.parse)
 
     def parse_ad(self, response):
         sel = Selector(response)
-        item = CLItem()
+        item = CLAd()
         item['id'] = response.meta['pid']
         item['title'] = sel.xpath('//h2[@class="postingtitle"]/text()').extract()[-1].encode('UTF-8').strip()
         item['link'] = response.url
         item['description'] = map(unicode.strip, sel.xpath('//section[@id="postingbody"]//text()').extract())
         #item['attrs'] = [self.parse_attrs(a) for a in sel.xpath('//p[@class="attrgroup"]//span')]
-        item['attrs'] = []
-        for a in sel.xpath('//p[@class="attrgroup"][0]//span'):
-            akey, aval = self.parse_attrs(a)
+        item['attrs'] = {}
+        for a in sel.xpath('//p[@class="attrgroup"]//span'):
+            try:
+                akey, aval = self.parse_attrs(a)
+            except ValueError:
+                continue
+
             if akey:
-                clattr = CLAttr()
-                clattr['id'] = akey
-                yield clattr
-            item['attrs'].append({'key': akey, 'val': aval})
+                if not CLAttr.exists(akey):
+                    clattr = CLAttr()
+                    clattr['id'] = akey
+                    clattr.save()
+            else:
+                akey = '_'
+            item['attrs'][akey] = aval
         item['images'] = sel.xpath('//div[@id="thumbs"]//a/@href').extract()
-        yield item
+        item.save()
 
     def parse_attrs(self, path):
-        print(path)
         attr_key = path.xpath('text()').extract()
         attr_val = path.xpath('b/text()').extract()
         if not attr_key:
@@ -57,4 +67,11 @@ class CLAdSpider(CrawlSpider):
             else:
                 raise ValueError('Unknown attribute without value: %s' % attr_key[0])
 
-        return (attr_key[0].encode('UTF-8').replace(':', "").strip().replace(' ', '_'), attr_val[0].encode('UTF-8').strip())
+        else:
+            attr_key = attr_key[0]
+            attr_val = attr_val[0]
+
+        key = attr_key.encode('UTF-8').replace(':', "").strip().replace(' ', '_')
+        val = attr_val.encode('UTF-8').strip()
+
+        return (key, val)

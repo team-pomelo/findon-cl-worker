@@ -14,7 +14,7 @@ pycparser==2.10
 pyes==0.99.5
 queuelib==1.2.2
 six==1.9.0
-urllib3==1.10
+urllib3==1.26.5
 w3lib==1.11.0
 wsgiref==0.1.2
 zope.interface==4.1.2
